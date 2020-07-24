@@ -602,6 +602,7 @@ module sd_host_intf #(
 
   // Size of BRAM plus 1 to be able to track whether the buffer is full/empty.
   localparam BUF_PTR_WIDTH = 13;
+  localparam BUF_SIZE = 2 ** (BUF_PTR_WIDTH - 1);
 
   function automatic [BUF_PTR_WIDTH-1:0] bin2gray(logic [BUF_PTR_WIDTH-1:0] binary);
     return (binary >> 1) ^ binary;
@@ -625,55 +626,53 @@ module sd_host_intf #(
   logic multi_block_q, multi_block_d;
   logic block_count_enable_q, block_count_enable_d;
 
-  // Cross clock domain with gray code. Note that we only need block-aligned addresses as
-  // block is the minimum transfer unit.
-  logic [BUF_PTR_WIDTH-1:0] buffer_host_ptr_blk;
-  logic [BUF_PTR_WIDTH-1:0] buffer_host_ptr_blk_gray;
-  logic [BUF_PTR_WIDTH-1:0] buffer_host_ptr_blk_gray_sdclk;
-  logic [BUF_PTR_WIDTH-1:0] buffer_host_ptr_blk_sdclk;
-  logic [BUF_PTR_WIDTH-1:0] buffer_dat_ptr_blk_sdclk;
-  logic [BUF_PTR_WIDTH-1:0] buffer_dat_ptr_blk_gray_sdclk;
-  logic [BUF_PTR_WIDTH-1:0] buffer_dat_ptr_blk_gray;
-  logic [BUF_PTR_WIDTH-1:0] buffer_dat_ptr_blk;
+  // Cross clock domain with gray code.
+  logic [BUF_PTR_WIDTH-1:0] buffer_host_ptr_gray;
+  logic [BUF_PTR_WIDTH-1:0] buffer_host_ptr_gray_sdclk;
+  logic [BUF_PTR_WIDTH-1:0] buffer_host_ptr_sdclk;
+  logic [BUF_PTR_WIDTH-1:0] buffer_dat_ptr_gray_sdclk;
+  logic [BUF_PTR_WIDTH-1:0] buffer_dat_ptr_gray;
+  logic [BUF_PTR_WIDTH-1:0] buffer_dat_ptr;
 
-  assign buffer_host_ptr_blk = buffer_host_ptr_q &~ (transfer_block_size_q - 1);
-  assign buffer_host_ptr_blk_gray = bin2gray(buffer_host_ptr_blk);
-  assign buffer_host_ptr_blk_sdclk = gray2bin(buffer_host_ptr_blk_gray_sdclk);
-  assign buffer_dat_ptr_blk_sdclk = buffer_dat_ptr_sdclk_q &~ (transfer_block_size_q - 1);
-  assign buffer_dat_ptr_blk_gray_sdclk = bin2gray(buffer_dat_ptr_blk_sdclk);
-  assign buffer_dat_ptr_blk = gray2bin(buffer_dat_ptr_blk_gray);
+  assign buffer_host_ptr_gray = bin2gray(buffer_host_ptr_q);
+  assign buffer_host_ptr_sdclk = gray2bin(buffer_host_ptr_gray_sdclk);
+  assign buffer_dat_ptr_gray_sdclk = bin2gray(buffer_dat_ptr_sdclk_q);
+  assign buffer_dat_ptr = gray2bin(buffer_dat_ptr_gray);
 
-  prim_flop_2sync #(.Width(BUF_PTR_WIDTH)) buffer_host_ptr_blk_sync (
+  prim_flop_2sync #(.Width(BUF_PTR_WIDTH)) buffer_host_ptr_sync (
     .clk_i  (sdclk_o),
     .rst_ni (rst_all_n),
-    .d      (buffer_host_ptr_blk_gray),
-    .q      (buffer_host_ptr_blk_gray_sdclk)
+    .d      (buffer_host_ptr_gray),
+    .q      (buffer_host_ptr_gray_sdclk)
   );
-  prim_flop_2sync #(.Width(BUF_PTR_WIDTH)) buffer_dat_ptr_blk_sync (
+  prim_flop_2sync #(.Width(BUF_PTR_WIDTH)) buffer_dat_ptr_sync (
     .clk_i  (clk_i),
     .rst_ni (rst_all_n),
-    .d      (buffer_dat_ptr_blk_gray_sdclk),
-    .q      (buffer_dat_ptr_blk_gray)
+    .d      (buffer_dat_ptr_gray_sdclk),
+    .q      (buffer_dat_ptr_gray)
   );
+
+  wire [BUF_PTR_WIDTH-1:0] buffer_write_used_sdclk = buffer_host_ptr_sdclk - buffer_dat_ptr_sdclk_q;
+  wire [BUF_PTR_WIDTH-1:0] buffer_read_left_sdclk = buffer_write_used_sdclk + BUF_SIZE;
+
+  wire [BUF_PTR_WIDTH-1:0] buffer_read_used = buffer_dat_ptr - buffer_host_ptr_q;
+  wire [BUF_PTR_WIDTH-1:0] buffer_write_left = buffer_read_used + BUF_SIZE;
+  wire [BUF_PTR_WIDTH-1:0] buffer_read_left = buffer_host_ptr_q - buffer_dat_ptr + BUF_SIZE;
 
   // If the SD clock is paused due to the buffer being full, resume it when the buffer returns
   // to normal.
   //
+  // Note that buffer_read_left is an overestimate, because dat_ptr could be moved to later slots already.
+  // It's okay to use the overestimation here because sd_paused_full_q can only be set to high by SDCLK,
+  // and when it is raised buffer_dat_ptr_sdclk shouldn't be updated anymore, thus `buffer_read_left`
+  // will indeed be accurate.
+  //
   // Note that we do not resume the SD clock when the buffer is near full. If we resume the SD
   // clock when the buffer is near full, we could resume data transfer but not command issue, which means
   // we could starve CMD.
-  
-  wire buffer_is_full =
-    buffer_dat_ptr_blk[BUF_PTR_WIDTH-1] != buffer_host_ptr_blk[BUF_PTR_WIDTH-1] &&
-    buffer_dat_ptr_blk[BUF_PTR_WIDTH-2:0] == buffer_host_ptr_blk[BUF_PTR_WIDTH-2:0];
-  wire [BUF_PTR_WIDTH-1:0] buffer_data_ptr_blk_next = buffer_dat_ptr_blk + transfer_block_size_q;
-  wire buffer_near_full =
-    buffer_data_ptr_blk_next[BUF_PTR_WIDTH-1] != buffer_host_ptr_blk[BUF_PTR_WIDTH-1] &&
-    buffer_data_ptr_blk_next[BUF_PTR_WIDTH-2:0] == buffer_host_ptr_blk[BUF_PTR_WIDTH-2:0];
-  wire buffer_is_or_near_full = buffer_is_full || buffer_near_full;
-  wire buffer_is_empty = buffer_dat_ptr_blk == buffer_host_ptr_blk;
-
-  assign sd_resume_req_full = sd_paused_full_q && !buffer_is_or_near_full;
+  assign sd_resume_req_full = sd_paused_full_q &&
+                              buffer_read_left >= transfer_block_size_q &&
+                              buffer_read_left >= 512;
 
   logic [31:0] buffer_host_rdata;
 
@@ -725,7 +724,7 @@ module sd_host_intf #(
     if (bram_en) begin
       if (bram_addr_actual == 8'h20) begin
         buffer_host_ptr_d = buffer_host_ptr_q + 4;
-        if (w_mode_q && (buffer_host_ptr_d &~ (transfer_block_size_q - 1)) != buffer_host_ptr_blk) begin
+        if (w_mode_q && (buffer_host_ptr_d & (transfer_block_size_q - 1)) == 0) begin
           w_block_count_d = w_block_count_q - 1;
         end
       end
@@ -740,8 +739,8 @@ module sd_host_intf #(
     end
   end
 
-  wire buffer_read_enable = !w_mode_q && !buffer_is_empty;
-  wire buffer_write_enable = w_mode_q && w_block_count_q != 0 && !buffer_is_full;
+  wire buffer_read_enable = !w_mode_q && buffer_read_used >= transfer_block_size_q;
+  wire buffer_write_enable = w_mode_q && w_block_count_q != 0 && buffer_write_left >= transfer_block_size_q;
   logic buffer_read_enable_q;
   logic buffer_write_enable_q;
   assign normal_irq_trigger[5] = !buffer_read_enable_q && buffer_read_enable;
@@ -798,10 +797,8 @@ module sd_host_intf #(
 
   // We're on the last buffer block if the next chunk will coincide with the current chunk
   // available to the host.
-  wire buffer_is_full_sdclk =
-    buffer_dat_ptr_blk_sdclk[BUF_PTR_WIDTH-1] != buffer_host_ptr_blk_sdclk[BUF_PTR_WIDTH-1] &&
-    buffer_dat_ptr_blk_sdclk[BUF_PTR_WIDTH-2:0] == buffer_host_ptr_blk_sdclk[BUF_PTR_WIDTH-2:0];
-  wire buffer_is_empty_sdclk = buffer_dat_ptr_blk_sdclk == buffer_host_ptr_blk_sdclk;
+  wire buffer_is_full_sdclk = buffer_read_left_sdclk < transfer_block_size_q;
+  wire buffer_is_empty_sdclk = buffer_write_used_sdclk < transfer_block_size_q;
 
   logic reset_buf_r;
   logic reset_buf_w;
