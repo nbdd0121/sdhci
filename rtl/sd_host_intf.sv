@@ -641,13 +641,13 @@ module sd_host_intf #(
 
   prim_flop_2sync #(.Width(BUF_PTR_WIDTH)) buffer_host_ptr_sync (
     .clk_i  (sdclk_o),
-    .rst_ni (rst_all_n),
+    .rst_ni (rst_dat_n),
     .d      (buffer_host_ptr_gray),
     .q      (buffer_host_ptr_gray_sdclk)
   );
   prim_flop_2sync #(.Width(BUF_PTR_WIDTH)) buffer_dat_ptr_sync (
     .clk_i  (clk_i),
-    .rst_ni (rst_all_n),
+    .rst_ni (rst_dat_n),
     .d      (buffer_dat_ptr_gray_sdclk),
     .q      (buffer_dat_ptr_gray)
   );
@@ -884,6 +884,7 @@ module sd_host_intf #(
   //   low or when stop at block gap is requested, as we cannot stop SDCLK when command issue is
   //   in progress.
   wire cmd_issue_allowed = w_mode_sdclk_q || (buffer_read_left_sdclk >= 512 && !gap_stop_q);
+
   always_comb begin
     w_mode_sdclk_d = w_mode_sdclk_q;
     buffer_read_d = 1'b0;
