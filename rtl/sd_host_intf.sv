@@ -664,7 +664,7 @@ module sd_host_intf #(
   //
   // Note that buffer_read_left is an overestimate, because dat_ptr could be moved to later slots already.
   // It's okay to use the overestimation here because sd_paused_full_q can only be set to high by SDCLK,
-  // and when it is raised buffer_dat_ptr_sdclk shouldn't be updated anymore, thus `buffer_read_left`
+  // and when it is raised buffer_dat_ptr shouldn't be updated anymore, thus `buffer_read_left`
   // will indeed be accurate.
   //
   // Note that we do not resume the SD clock when the buffer is near full. If we resume the SD
@@ -731,7 +731,18 @@ module sd_host_intf #(
     end
 
     if (cmd_issue_q && data_present_q) begin
-      buffer_host_ptr_d = 0;
+      // Clear buffer by updating host pointer rather than relying on both pointer
+      // to be reset to zero. Because dat pointer shouldn't move anymore (the transfer must be
+      // completed before the next transfer is issued), this is safe.
+      // In the case where all data has been consumed, the pointers are equal so this is a no-op,
+      // otherwise the buffer is cleared.
+      //
+      // Note that we shouldn't reset both host and dat pointers to zero to clear the buffer.
+      // Otherwise, because these pointers are resetted in different
+      // clock we may see some transients states and these can cause glitches in our
+      // buffer size computation logic.
+      buffer_host_ptr_d = buffer_dat_ptr;
+
       w_mode_d = !data_transfer_direction_q;
       if (!data_transfer_direction_q) begin
         w_block_count_d = multi_block_q ? (block_count_enable_q ? block_count_q : 0) : 1;
@@ -869,6 +880,10 @@ module sd_host_intf #(
   logic w_mode_sdclk_q, w_mode_sdclk_d;
   logic buffer_is_empty_sdclk_q;
 
+  // * If there is a read transfer in place, we cannot issue a command when the buffer is running
+  //   low or when stop at block gap is requested, as we cannot stop SDCLK when command issue is
+  //   in progress.
+  wire cmd_issue_allowed = w_mode_sdclk_q || (buffer_read_left_sdclk >= 512 && !gap_stop_q);
   always_comb begin
     w_mode_sdclk_d = w_mode_sdclk_q;
     buffer_read_d = 1'b0;
@@ -877,11 +892,9 @@ module sd_host_intf #(
     unique case (1'b1)
       reset_buf_r: begin
         w_mode_sdclk_d = 1'b0;
-        buffer_dat_ptr_sdclk_d = 0;
       end
       reset_buf_w: begin
         w_mode_sdclk_d = 1'b1;
-        buffer_dat_ptr_sdclk_d = 0;
       end
       w_mode_sdclk_q && buffer_is_empty_sdclk_q && !buffer_is_empty_sdclk: begin
         buffer_read_d = 1'b1;
@@ -1079,13 +1092,14 @@ module sd_host_intf #(
     .rst_cmd_ni (rst_cmd_n),
     .argument_i (argument_q),
     .command_index_i (command_index_q),
+    .command_type_i (command_type_q),
     .response_type_i (response_type_q),
     .command_index_check_i (command_index_check_q),
     .command_crc_check_i (command_crc_check_q),
     .response_o (response_q),
     .cmd_issue_i (cmd_issue_sdclk),
     .auto_cmd12_issue_i (auto_cmd12_issue),
-    .cmd_issue_allowed_i (1'b1),
+    .cmd_issue_allowed_i (cmd_issue_allowed),
     .command_end_o (command_end_sdclk),
     .command_complete_o (command_complete_sdclk),
     .auto_cmd12_complete_o (auto_cmd12_complete_sdclk),
@@ -1140,6 +1154,7 @@ module sd_host_intf #(
     .write_xfer_active_o (write_xfer_active_sdclk),
     .dat_line_active_o (dat_line_active_sdclk),
     .auto_cmd12_issue_o (auto_cmd12_issue),
+    .cmd_issue_i (cmd_issue_sdclk),
     .command_end_i (command_end_sdclk),
     .command_complete_i (command_complete_sdclk),
     .auto_cmd12_complete_i (auto_cmd12_complete_sdclk),

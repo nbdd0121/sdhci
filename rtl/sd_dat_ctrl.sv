@@ -64,6 +64,7 @@ module sd_dat_ctrl (
   // For write transactions, write could start.
   // For busy transactions, busy signal should start to be detected.
   // Command can start to be issued upon receiving this pulse.
+  input  logic cmd_issue_i,
   input  logic command_complete_i,
   input  logic auto_cmd12_complete_i,
 
@@ -312,7 +313,7 @@ module sd_dat_ctrl (
       default:;
     endcase
 
-    if (command_end_i && command_type_i == 2'b11) begin
+    if (cmd_issue_i && command_type_i == 2'b11) begin
       state_d = ST_ERROR;
     end
   end

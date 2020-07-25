@@ -7,6 +7,7 @@ module sd_cmd_ctrl #(
   // Command config.
   input  logic [31:0] argument_i,
   input  logic [5:0] command_index_i,
+  input  logic [1:0] command_type_i,
   input  logic [1:0] response_type_i,
   input  logic command_index_check_i,
   input  logic command_crc_check_i,
@@ -140,7 +141,7 @@ module sd_cmd_ctrl #(
             state_d = ST_AUTO_CMD12;
           end
           cmd_pending_q: begin
-            if (cmd_issue_allowed_i) begin
+            if (cmd_issue_allowed_i || command_type_i == 2'b11) begin
               do_issue_d = 1'b1;
               cmd_pending_d = 1'b0;
               state_d = ST_OP;
