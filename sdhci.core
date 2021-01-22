@@ -1,0 +1,40 @@
+CAPI=2:
+# Copyright 2021 Gary Guo.
+# Licensed under the Apache License, Version 2.0, see LICENSE for details.
+# SPDX-License-Identifier: Apache-2.0
+name: "garyguo.net:peripheral:sdhci:0.1"
+description: "SD Host Controller Interface"
+
+filesets:
+  files_rtl:
+    depend:
+      - lowrisc:prim:ram_2p
+      - lowrisc:prim:flop
+      - lowrisc:prim:flop_2sync
+      - lowrisc:prim:pulse_sync
+    files:
+      - rtl/sd_card_detect.sv
+      - rtl/sd_clock_div.sv
+      - rtl/sd_cmd_ctrl.sv
+      - rtl/sd_cmd_intf.sv
+      - rtl/sd_dat_ctrl.sv
+      - rtl/sd_dat_intf.sv
+      - rtl/sd_host_intf.sv
+    file_type: systemVerilogSource
+
+  files_lint_verilator:
+    files:
+      - verilator/lint_waiver.vlt: {file_type: vlt}
+
+targets:
+  default: &default_target
+    filesets:
+      - tool_verilator ? (files_lint_verilator)
+      - files_rtl
+    toplevel: sd_host_intf
+  lint:
+    <<: *default_target
+    default_tool: verilator
+    tools:
+      verilator:
+        mode: lint-only
