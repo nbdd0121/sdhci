@@ -5,7 +5,7 @@
 // Synchronous dual-port SRAM register model
 //   This module is for simulation and small size SRAM.
 //   Implementing ECC should be done inside wrapper not this model.
-
+`include "prim_assert.sv"
 module prim_generic_ram_2p #(
   parameter  int Width           = 32, // bit
   parameter  int Depth           = 128,
@@ -44,13 +44,13 @@ module prim_generic_ram_2p #(
     assign a_wmask[k] = &a_wmask_i[k*DataBitsPerMask +: DataBitsPerMask];
     assign b_wmask[k] = &b_wmask_i[k*DataBitsPerMask +: DataBitsPerMask];
 
-    // Ensure that all mask bits within a group have the same value
-    // `ASSERT(MaskCheckPortA_A, a_req_i |->
-    //     a_wmask_i[k*DataBitsPerMask +: DataBitsPerMask] inside {{DataBitsPerMask{1'b1}}, '0},
-    //     clk_a_i, '0)
-    // `ASSERT(MaskCheckPortB_A, b_req_i |->
-    //     b_wmask_i[k*DataBitsPerMask +: DataBitsPerMask] inside {{DataBitsPerMask{1'b1}}, '0},
-    //     clk_b_i, '0)
+    // Ensure that all mask bits within a group have the same value for a write
+    `ASSERT(MaskCheckPortA_A, a_req_i && a_write_i |->
+        a_wmask_i[k*DataBitsPerMask +: DataBitsPerMask] inside {{DataBitsPerMask{1'b1}}, '0},
+        clk_a_i, '0)
+    `ASSERT(MaskCheckPortB_A, b_req_i && b_write_i |->
+        b_wmask_i[k*DataBitsPerMask +: DataBitsPerMask] inside {{DataBitsPerMask{1'b1}}, '0},
+        clk_b_i, '0)
   end
 
   // Xilinx FPGA specific Dual-port RAM coding style
@@ -65,8 +65,9 @@ module prim_generic_ram_2p #(
               a_wdata_i[i*DataBitsPerMask +: DataBitsPerMask];
           end
         end
+      end else begin
+        a_rdata_o <= mem[a_addr_i];
       end
-      a_rdata_o <= mem[a_addr_i];
     end
   end
 
@@ -79,11 +80,12 @@ module prim_generic_ram_2p #(
               b_wdata_i[i*DataBitsPerMask +: DataBitsPerMask];
           end
         end
+      end else begin
+        b_rdata_o <= mem[b_addr_i];
       end
-      b_rdata_o <= mem[b_addr_i];
     end
   end
 
-  `include "prim_util_memload.sv"
+  `include "prim_util_memload.svh"
 
 endmodule
