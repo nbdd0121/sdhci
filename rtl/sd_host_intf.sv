@@ -556,7 +556,7 @@ module sd_host_intf #(
   logic [4:0] normal_irq_status_q_dat;
   logic [0:0] normal_irq_status_q_cmd;
   logic [2:0] normal_irq_status_q_all;
-  assign normal_irq_status_q = {normal_irq_status_q_all, normal_irq_status_q_cmd, normal_irq_status_q_dat};
+  assign normal_irq_status_q = {normal_irq_status_q_all, normal_irq_status_q_dat, normal_irq_status_q_cmd};
 
   always_ff @(posedge clk_i or negedge rst_dat_n) begin
     if (!rst_dat_n) begin
