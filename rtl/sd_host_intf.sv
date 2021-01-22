@@ -1169,6 +1169,9 @@ module sd_host_intf #(
     .dat_t (dat_t_sdclk)
   );
 
+  logic read_xfer_active;
+  logic write_xfer_active;
+  logic dat_line_active;
   prim_flop_2sync #(.Width(1)) read_xfer_active_sync (.clk_i, .rst_ni, .d_i(read_xfer_active_sdclk), .q_o(read_xfer_active));
   prim_flop_2sync #(.Width(1)) write_xfer_active_sync (.clk_i, .rst_ni, .d_i(write_xfer_active_sdclk), .q_o(write_xfer_active));
   prim_flop_2sync #(.Width(1)) dat_line_active_sync (.clk_i, .rst_ni, .d_i(dat_line_active_sdclk), .q_o(dat_line_active));

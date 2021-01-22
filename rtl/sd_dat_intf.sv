@@ -101,11 +101,11 @@ module sd_dat_intf(
 
     // By default disable the tristate.
     dat_oe_n = 1'b1;
-    dat_o = 1'bx;
+    dat_o = 4'dx;
     rx_valid_d = 1'b0;
     tx_ready_o = 1'b0;
 
-    case (state)
+    unique case (state)
       ST_IDLE: begin
         count_d = 0;
         crc_d = 0;
