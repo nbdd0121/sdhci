@@ -1,0 +1,41 @@
+CAPI=2:
+# Copyright 2021 Gary Guo.
+# Licensed under the Apache License, Version 2.0, see LICENSE for details.
+# SPDX-License-Identifier: Apache-2.0
+
+# This is expected to be a workaround util lowRISC seperates prim_pulse_sync
+# into its own core.
+
+name: "lowrisc:prim:pulse_sync"
+description: "Pulse Sync"
+filesets:
+  files_rtl:
+    depend:
+      - lowrisc:prim:flop_2sync
+    files:
+      - vendor/lowrisc_ip/prim/rtl/prim_pulse_sync.sv
+    file_type: systemVerilogSource
+
+  files_verilator_waiver:
+    depend:
+      # common waivers
+      - lowrisc:lint:common
+
+  files_ascentlint_waiver:
+    depend:
+      # common waivers
+      - lowrisc:lint:common
+
+  files_veriblelint_waiver:
+    depend:
+      # common waivers
+      - lowrisc:lint:common
+      - lowrisc:lint:comportable
+
+targets:
+  default:
+    filesets:
+      - tool_verilator   ? (files_verilator_waiver)
+      - tool_ascentlint  ? (files_ascentlint_waiver)
+      - tool_veriblelint ? (files_veriblelint_waiver)
+      - files_rtl
