@@ -610,11 +610,11 @@ module sd_host_intf #(
   localparam BUF_PTR_WIDTH = 13;
   localparam BUF_SIZE = 2 ** (BUF_PTR_WIDTH - 1);
 
-  function automatic [BUF_PTR_WIDTH-1:0] bin2gray(logic [BUF_PTR_WIDTH-1:0] binary);
+  function automatic [BUF_PTR_WIDTH-1:0] bin2gray(input logic [BUF_PTR_WIDTH-1:0] binary);
     return (binary >> 1) ^ binary;
   endfunction
 
-  function automatic [BUF_PTR_WIDTH-1:0] gray2bin(logic [BUF_PTR_WIDTH-1:0] gray);
+  function automatic [BUF_PTR_WIDTH-1:0] gray2bin(input logic [BUF_PTR_WIDTH-1:0] gray);
     gray2bin = 0;
     for (int i = 0; i < BUF_PTR_WIDTH; i++) begin
       for (int j = i; j < BUF_PTR_WIDTH; j++) begin
