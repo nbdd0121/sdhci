@@ -687,7 +687,7 @@ module sd_host_intf #(
   logic [3:0][7:0] buffer_rdata_full;
   wire [7:0] buffer_rdata = buffer_rdata_full[buffer_dat_ptr_sdclk_q[1:0]];
 
-  prim_generic_ram_2p #(
+  prim_ram_2p #(
     .Width (32),
     // The size must be at least 2x largest block size supported (2048)
     .Depth (1024),
