@@ -114,7 +114,7 @@ module sd_host_intf #(
 
   // Synchronise async IO signal to clk_i.
   logic sdcd;
-  prim_flop_2sync #(.Width(1)) sdcd_sync_inst (.clk_i, .rst_ni, .d(!sdcd_ni), .q(sdcd));
+  prim_flop_2sync #(.Width(1)) sdcd_sync_inst (.clk_i, .rst_ni, .d_i(!sdcd_ni), .q_o(sdcd));
 
   // Multiplex between test signals and IO input
   wire card_detect_pin_level = card_detect_signal_selection_q ? card_detect_test_level_q : sdcd;
@@ -642,14 +642,14 @@ module sd_host_intf #(
   prim_flop_2sync #(.Width(BUF_PTR_WIDTH)) buffer_host_ptr_sync (
     .clk_i  (sdclk_o),
     .rst_ni (rst_dat_n),
-    .d      (buffer_host_ptr_gray),
-    .q      (buffer_host_ptr_gray_sdclk)
+    .d_i    (buffer_host_ptr_gray),
+    .q_o    (buffer_host_ptr_gray_sdclk)
   );
   prim_flop_2sync #(.Width(BUF_PTR_WIDTH)) buffer_dat_ptr_sync (
     .clk_i  (clk_i),
     .rst_ni (rst_dat_n),
-    .d      (buffer_dat_ptr_gray_sdclk),
-    .q      (buffer_dat_ptr_gray)
+    .d_i    (buffer_dat_ptr_gray_sdclk),
+    .q_o    (buffer_dat_ptr_gray)
   );
 
   wire [BUF_PTR_WIDTH-1:0] buffer_write_used_sdclk = buffer_host_ptr_sdclk - buffer_dat_ptr_sdclk_q;
@@ -795,7 +795,7 @@ module sd_host_intf #(
   logic gap_continue_q, gap_continue_d;
   logic gap_stop_q, gap_stop_d;
   logic gap_continue_sdclk;
-  prim_flop_2sync #(.Width(1)) gap_continue_sync(.clk_i(sdclk_o), .rst_ni(rst_dat_n), .d(gap_continue_q), .q(gap_continue_sdclk));
+  prim_flop_2sync #(.Width(1)) gap_continue_sync(.clk_i(sdclk_o), .rst_ni(rst_dat_n), .d_i(gap_continue_q), .q_o(gap_continue_sdclk));
 
   // These registers control how we do data transfer.
   // These registers ought not to be changed when there is a transaction in progress, so we need
@@ -1169,9 +1169,9 @@ module sd_host_intf #(
     .dat_t (dat_t_sdclk)
   );
 
-  prim_flop_2sync #(.Width(1)) read_xfer_active_sync (.clk_i, .rst_ni, .d(read_xfer_active_sdclk), .q(read_xfer_active));
-  prim_flop_2sync #(.Width(1)) write_xfer_active_sync (.clk_i, .rst_ni, .d(write_xfer_active_sdclk), .q(write_xfer_active));
-  prim_flop_2sync #(.Width(1)) dat_line_active_sync (.clk_i, .rst_ni, .d(dat_line_active_sdclk), .q(dat_line_active));
+  prim_flop_2sync #(.Width(1)) read_xfer_active_sync (.clk_i, .rst_ni, .d_i(read_xfer_active_sdclk), .q_o(read_xfer_active));
+  prim_flop_2sync #(.Width(1)) write_xfer_active_sync (.clk_i, .rst_ni, .d_i(write_xfer_active_sdclk), .q_o(write_xfer_active));
+  prim_flop_2sync #(.Width(1)) dat_line_active_sync (.clk_i, .rst_ni, .d_i(dat_line_active_sdclk), .q_o(dat_line_active));
   logic command_inhibit_dat_q;
   wire command_inhibit_dat = read_xfer_active || dat_line_active;
 
@@ -1228,9 +1228,9 @@ module sd_host_intf #(
   logic cmd_i_sync;
   logic [3:0] dat_i_sync;
   logic sdwp_n_sync;
-  prim_flop_2sync #(.Width(1)) cmd_i_sync_inst (.clk_i, .rst_ni, .d(cmd_i), .q(cmd_i_sync));
-  prim_flop_2sync #(.Width(4)) dat_i_sync_inst (.clk_i, .rst_ni, .d(dat_i), .q(dat_i_sync));
-  prim_flop_2sync #(.Width(1)) sdwp_n_sync_inst (.clk_i, .rst_ni, .d(sdwp_ni), .q(sdwp_n_sync));
+  prim_flop_2sync #(.Width(1)) cmd_i_sync_inst (.clk_i, .rst_ni, .d_i(cmd_i), .q_o(cmd_i_sync));
+  prim_flop_2sync #(.Width(4)) dat_i_sync_inst (.clk_i, .rst_ni, .d_i(dat_i), .q_o(dat_i_sync));
+  prim_flop_2sync #(.Width(1)) sdwp_n_sync_inst (.clk_i, .rst_ni, .d_i(sdwp_ni), .q_o(sdwp_n_sync));
 
   // Present State Register (024h)
   // [24]    CMD Line Signal Level

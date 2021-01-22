@@ -37,14 +37,14 @@ module sd_clock_div (
   prim_flop_2sync #(.Width(1)) power_sync (
     .clk_i  (clk_base_i),
     .rst_ni (rst_ni),
-    .d      (power_i),
-    .q      (power)
+    .d_i    (power_i),
+    .q_o    (power)
   );
   prim_flop_2sync #(.Width(1)) enable_sync (
     .clk_i  (clk_base_i),
     .rst_ni (rst_ni),
-    .d      (enable_i),
-    .q      (enable)
+    .d_i    (enable_i),
+    .q_o    (enable)
   );
 
   logic [10:0] counter_q, counter_d;
