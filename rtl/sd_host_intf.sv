@@ -388,7 +388,7 @@ module sd_host_intf #(
   // Interrupt and error status.
   logic [8:0] normal_irq_status_q, normal_irq_status_d;
   logic [9:0] error_irq_status_q, error_irq_status_d;
-  logic [5:0] auto_cmd12_error_q, auto_cmd12_error_d;
+  logic [4:0] auto_cmd12_error_q, auto_cmd12_error_d;
   logic auto_cmd12_no_issue_q, auto_cmd12_no_issue_d;
 
   // Interrupt-related RW enable registers.
@@ -552,25 +552,31 @@ module sd_host_intf #(
     auto_cmd12_no_issue_d |= auto_cmd12_no_issue_trigger;
   end
 
+  // Separate normal_irq_status_q fields because have different reset mechanism.
+  logic [4:0] normal_irq_status_q_dat;
+  logic [0:0] normal_irq_status_q_cmd;
+  logic [2:0] normal_irq_status_q_all;
+  assign normal_irq_status_q = {normal_irq_status_q_all, normal_irq_status_q_cmd, normal_irq_status_q_dat};
+
   always_ff @(posedge clk_i or negedge rst_dat_n) begin
     if (!rst_dat_n) begin
-      normal_irq_status_q[5:1] <= '0;
+      normal_irq_status_q_dat <= '0;
     end else begin
-      normal_irq_status_q[5:1] <= normal_irq_status_d[5:1];
+      normal_irq_status_q_dat <= normal_irq_status_d[5:1];
     end
   end
 
   always_ff @(posedge clk_i or negedge rst_cmd_n) begin
     if (!rst_cmd_n) begin
-      normal_irq_status_q[0] <= '0;
+      normal_irq_status_q_cmd <= '0;
     end else begin
-      normal_irq_status_q[0] <= normal_irq_status_d[0];
+      normal_irq_status_q_cmd <= normal_irq_status_d[0];
     end
   end
 
   always_ff @(posedge clk_i or negedge rst_all_n) begin
     if (!rst_all_n) begin
-      normal_irq_status_q[8:6] <= '0;
+      normal_irq_status_q_all <= '0;
       error_irq_status_q <= '0;
       auto_cmd12_error_q <= '0;
       auto_cmd12_no_issue_q <= 1'b0;
@@ -582,7 +588,7 @@ module sd_host_intf #(
       wakeup_insertion_q <= '0;
       wakeup_interrupt_q <= '0;
     end else begin
-      normal_irq_status_q[8:6] <= normal_irq_status_d[8:6];
+      normal_irq_status_q_all <= normal_irq_status_d[8:6];
       error_irq_status_q <= error_irq_status_d;
       auto_cmd12_error_q <= auto_cmd12_error_d;
       auto_cmd12_no_issue_q <= auto_cmd12_no_issue_d;
@@ -1291,9 +1297,9 @@ module sd_host_intf #(
   // Maximum Current Capabilities Register (048h)
   wire [63:0] req_current_cap = {
     40'd0,
-    8'(Voltage == 3'b101 ? Current : 0),
-    8'(Voltage == 3'b110 ? Current : 0),
-    8'(Voltage == 3'b111 ? Current : 0)
+    8'(Voltage == 3'b101 ? Current : '0),
+    8'(Voltage == 3'b110 ? Current : '0),
+    8'(Voltage == 3'b111 ? Current : '0)
   };
 
   // Slot Interrupt Status Register (0FCh)
@@ -1461,7 +1467,6 @@ module sd_host_intf #(
           end
           bram_reg_read_d = {
             reg_wakeup_ctrl,
-            5'd0, wakeup_removal_q, wakeup_insertion_q, wakeup_interrupt_q,
             4'd0, 1'b0, 1'b0, gap_continue_q, gap_stop_q,
             reg_power_ctrl,
             card_detect_signal_selection_q, card_detect_test_level_q, 1'b0, 2'b0, 1'b0, dat_width_q, led_o

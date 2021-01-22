@@ -70,7 +70,7 @@ module sd_dat_intf(
   } state, state_d;
 
   logic [4:0]  count, count_d;
-  logic [10:0] data_count, data_count_d;
+  logic [11:0] data_count, data_count_d;
   logic [3:0][15:0] crc, crc_d;
 
   logic [7:0] tx_buffer, tx_buffer_d;
@@ -311,6 +311,8 @@ module sd_dat_intf(
         // N_WR is 2 cycles
         state_d = ST_IDLE;
       end
+
+      default:;
     endcase
   end
 
